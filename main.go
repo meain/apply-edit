@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -9,13 +10,22 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <filename>\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Example: echo 'diff content' | %s file.txt\n", os.Args[0])
+	var explain bool
+	flag.BoolVar(&explain, "explain", false, "Show example usage")
+	flag.Parse()
+
+	if explain {
+		showExample()
+		return
+	}
+
+	if flag.NArg() != 1 {
+		fmt.Fprintf(os.Stderr, "Usage: %s [--explain] <filename>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Use --explain to see example usage\n")
 		os.Exit(1)
 	}
 
-	filename := os.Args[1]
+	filename := flag.Arg(0)
 
 	// Read diff from stdin
 	diff, err := readDiffFromStdin()
@@ -53,6 +63,50 @@ func main() {
 	}
 
 	fmt.Printf("Successfully applied edit to %s\n", filename)
+}
+
+func showExample() {
+	fmt.Println("apply-edit - Apply search and replace edits to files")
+	fmt.Println()
+	fmt.Println("USAGE:")
+	fmt.Printf("  %s [--explain] <filename>\n", os.Args[0])
+	fmt.Println()
+	fmt.Println("DESCRIPTION:")
+	fmt.Println("  Reads a diff from stdin and applies it to the specified file.")
+	fmt.Println("  The diff uses a special format with SEARCH and REPLACE blocks.")
+	fmt.Println()
+	fmt.Println("EXAMPLE:")
+	fmt.Println("  Given a file 'app.py' with contents:")
+	fmt.Println("    from flask import Flask")
+	fmt.Println("    app = Flask(__name__)")
+	fmt.Println()
+	fmt.Println("  Run this command:")
+	fmt.Printf("    cat <<EOF | %s app.py\n", os.Args[0])
+	fmt.Println("    <<<<<<< SEARCH")
+	fmt.Println("    from flask import Flask")
+	fmt.Println("    =======")
+	fmt.Println("    import math")
+	fmt.Println("    from flask import Flask")
+	fmt.Println("    >>>>>>> REPLACE")
+	fmt.Println("    EOF")
+	fmt.Println()
+	fmt.Println("  Result: The file will be updated to:")
+	fmt.Println("    import math")
+	fmt.Println("    from flask import Flask")
+	fmt.Println("    app = Flask(__name__)")
+	fmt.Println()
+	fmt.Println("FORMAT:")
+	fmt.Println("  <<<<<<< SEARCH")
+	fmt.Println("  [text to find]")
+	fmt.Println("  =======")
+	fmt.Println("  [text to replace with]")
+	fmt.Println("  >>>>>>> REPLACE")
+	fmt.Println()
+	fmt.Println("NOTES:")
+	fmt.Println("  - The search text must match exactly (including whitespace)")
+	fmt.Println("  - If multiple matches exist, the operation will fail to avoid ambiguity")
+	fmt.Println("  - Empty replace blocks will delete the search text")
+	fmt.Println("  - The original file is overwritten with the changes")
 }
 
 func readDiffFromStdin() (string, error) {
